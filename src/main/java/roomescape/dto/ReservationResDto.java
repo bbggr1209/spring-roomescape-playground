@@ -1,17 +1,16 @@
-package roomescape.model;
+package roomescape.dto;
 
 import java.time.LocalDate;
 
-public class Reservation {
-
+public class ReservationResDto {
     private Long id;
     private String name;
     private LocalDate date;
     private String time;
 
-    public Reservation() {}
+    public ReservationResDto() {}
 
-    public Reservation(Long id, String name, LocalDate date, String time) {
+    public ReservationResDto(Long id, String name, LocalDate date, String time) {
         this.id = id;
         this.name = name;
         this.date = date;
