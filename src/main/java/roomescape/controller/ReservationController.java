@@ -7,6 +7,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import roomescape.dto.ReservationReqDto;
 import roomescape.dto.ReservationResDto;
+import roomescape.exception.BadRequestException;
 import roomescape.model.Reservation;
 import roomescape.template.ApiResponseTemplate;
 
@@ -26,7 +27,12 @@ public class ReservationController {
         return "reservation";
     }
 
-    @GetMapping("/reservations")
+    @GetMapping(value = "/reservations", produces = "text/html")
+    public String reservationPage() {
+        return "new-reservation";
+    }
+
+    @GetMapping(value = "/reservations", produces = "application/json")
     @ResponseBody
     public ApiResponseTemplate<List<ReservationResDto>> getReservations() {
         List<ReservationResDto> dtoList = reservations.stream()
@@ -43,6 +49,8 @@ public class ReservationController {
     @PostMapping("/reservations")
     @ResponseBody
     public ResponseEntity<ApiResponseTemplate<ReservationResDto>> addReservation(@RequestBody ReservationReqDto reservationReqDto) {
+        validateReservationRequest(reservationReqDto);
+
         Reservation newReservation = new Reservation(
                 index.getAndIncrement(),
                 reservationReqDto.getName(),
@@ -71,16 +79,39 @@ public class ReservationController {
     @DeleteMapping("/reservations/{id}")
     @ResponseBody
     public ResponseEntity<ApiResponseTemplate<String>> deleteReservation(@PathVariable Long id) {
-        boolean removed = reservations.removeIf(reservation -> reservation.getId().equals(id));
-        return removed ? createSuccessDeleteResponse() : createNotFoundDeleteResponse();
+        ensureReservationExists(id);
+        removeReservation(id);
+        return createSuccessDeleteResponse();
     }
 
     private ResponseEntity<ApiResponseTemplate<String>> createSuccessDeleteResponse() {
         return new ResponseEntity<>(new ApiResponseTemplate<>("success", "예약 삭제 성공"), HttpStatus.NO_CONTENT);
     }
 
-    private ResponseEntity<ApiResponseTemplate<String>> createNotFoundDeleteResponse() {
-        return new ResponseEntity<>(new ApiResponseTemplate<>("error", "예약을 삭제 실패"), HttpStatus.NOT_FOUND);
+    private void ensureReservationExists(Long id) {
+        if (!reservationExists(id)) {
+            throw new BadRequestException("예약 삭제 실패");
+        }
+    }
+
+    private void validateReservationRequest(ReservationReqDto reservationReqDto) {
+        if (reservationReqDto.getName() == null || reservationReqDto.getName().isEmpty()) {
+            throw new BadRequestException("이름을 작성해주세요");
+        }
+        if (reservationReqDto.getDate() == null) {
+            throw new BadRequestException("날짜를 선택해주세요");
+        }
+        if (reservationReqDto.getTime() == null || reservationReqDto.getTime().isEmpty()) {
+            throw new BadRequestException("시간을 선택해주세요");
+        }
+    }
+
+    private boolean reservationExists(Long id) {
+        return reservations.stream().anyMatch(reservation -> reservation.getId().equals(id));
+    }
+
+    private void removeReservation(Long id) {
+        reservations.removeIf(reservation -> reservation.getId().equals(id));
     }
 
     @PostMapping("/reservations/reset")
